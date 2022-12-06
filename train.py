@@ -50,11 +50,20 @@ test_metadata = MetadataCatalog.get("my_dataset_val")
 
 
 # Augmentation list
-aug_list = [
-        A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
-        A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
-        A.RandomCrop(256, 256),
-        CopyPaste(blend=True, sigma=1, pct_objects_paste=0.8, p=1.0) #pct_objects_paste is a guess
+# aug_list = [
+#         A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
+#         A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
+#         A.RandomCrop(256, 256),
+#         CopyPaste(blend=True, sigma=1, pct_objects_paste=0.8, p=1.0) #pct_objects_paste is a guess
+#     ]
+
+aug_list = [A.Resize(800,800),\
+            # A.RandomScale(scale_limit=(-0.9, 1), p=1),\
+            A.OneOf([A.HorizontalFlip(),A.RandomRotate90()],p=0.75),\
+            A.OneOf([A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=35, val_shift_limit=25),A.RandomGamma(),A.CLAHE()],p=0.5),\
+            A.OneOf([A.RandomBrightnessContrast(brightness_limit=0.25, contrast_limit=0.25),A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15)],p=0.5),\
+            A.OneOf([A.Blur(),A.MotionBlur(),A.GaussNoise(),A.ImageCompression(quality_lower=75)],p=0.5),
+        CopyPaste(blend=True, sigma=1, pct_objects_paste=0.9, p=1.0) #pct_objects_paste is a guess
     ]
         
 transform = A.Compose(
@@ -174,7 +183,6 @@ class MyTrainer(DefaultTrainer):
 
 
 cfg = get_cfg()
-#cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
 cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
 
 cfg.DATASETS.TRAIN = ("my_dataset_train",)

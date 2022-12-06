@@ -43,12 +43,26 @@ class CocoDetectionCP(CocoDetection):
 
         # filter images without detection annotations
         ids = []
+
+        correlation_score = []
+
+        for i in range(92):
+            correlation_score.append([])
+            for j in range(92):
+                correlation_score[i].append(0)
+
         for img_id in self.ids:
             ann_ids = self.coco.getAnnIds(imgIds=img_id, iscrowd=None)
             anno = self.coco.loadAnns(ann_ids)
             if has_valid_annotation(anno):
                 ids.append(img_id)
+                for i in range(len(anno)):
+                    for j in range(i+1, len(anno)):
+                        correlation_score[anno[i]['category_id']][anno[j]['category_id']] += 1
+                        correlation_score[anno[j]['category_id']][anno[i]['category_id']] += 1
+
         self.ids = ids
+        self.correlation_score = correlation_score
 
     def load_example(self, index):
         img_id = self.ids[index]
@@ -80,5 +94,5 @@ class CocoDetectionCP(CocoDetection):
             'masks': masks,
             'bboxes': bboxes
         }
-        
+
         return self.transforms(**output)
