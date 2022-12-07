@@ -44,25 +44,13 @@ class CocoDetectionCP(CocoDetection):
         # filter images without detection annotations
         ids = []
 
-        # correlation_score = []
-
-        # for i in range(92):
-        #     correlation_score.append([])
-        #     for j in range(92):
-        #         correlation_score[i].append(0)
-
         for img_id in self.ids:
             ann_ids = self.coco.getAnnIds(imgIds=img_id, iscrowd=None)
             anno = self.coco.loadAnns(ann_ids)
             if has_valid_annotation(anno):
                 ids.append(img_id)
-                # for i in range(len(anno)):
-                #     for j in range(i+1, len(anno)):
-                #         correlation_score[anno[i]['category_id']][anno[j]['category_id']] += 1
-                #         correlation_score[anno[j]['category_id']][anno[i]['category_id']] += 1
 
         self.ids = ids
-        # self.correlation_score = correlation_score
 
     def load_example(self, index):
         img_id = self.ids[index]
@@ -81,12 +69,37 @@ class CocoDetectionCP(CocoDetection):
         bboxes = []
         for ix, obj in enumerate(target):
             masks.append(self.coco.annToMask(obj))
-            
             b_box = obj['bbox']
-            #b_box = [b_box[0],b_box[1],b_box[0]+b_box[2],b_box[1]+b_box[3]]
-            #print(b_box)
-            #bboxes.append(obj['bbox'] + [obj['category_id']] + [ix])
             bboxes.append(b_box + [obj['category_id']] + [ix])
+
+        #pack outputs into a dict
+        output = {
+            'image': image,
+            'masks': masks,
+            'bboxes': bboxes
+        }
+
+        return self.transforms(**output)
+
+    def load_example_from_img(self, img_id, cat):
+        ann_ids = self.coco.getAnnIds(imgIds=img_id)
+        target = self.coco.loadAnns(ann_ids)
+
+        path = self.coco.loadImgs(img_id)[0]['file_name']
+        image = cv2.imread(os.path.join(self.root, path))
+        #print(os.path.join(self.root, path))
+        #image = cv2.imread(os.path.join('', path))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        #convert all of the target segmentations to masks
+        #bboxes are expected to be (y1, x1, y2, x2, category_id)
+        masks = []
+        bboxes = []
+        for ix, obj in enumerate(target):
+            if obj['category_id'] == cat:
+                masks.append(self.coco.annToMask(obj))
+                b_box = obj['bbox']
+                bboxes.append(b_box + [obj['category_id']] + [ix])
 
         #pack outputs into a dict
         output = {

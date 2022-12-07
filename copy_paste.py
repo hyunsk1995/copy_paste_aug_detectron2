@@ -3,8 +3,19 @@ import cv2
 import random
 import numpy as np
 import albumentations as A
+
+import pickle
+
 from copy import deepcopy
 from skimage.filters import gaussian
+
+from pycocotools.coco import COCO
+
+coco_annotation_file_path = "coco/annotations/instances_train2017.json"
+coco_annotation = COCO(annotation_file=coco_annotation_file_path)
+
+with open('cooccurence_table.pkl', 'rb') as f:
+    cooccurence_table = pickle.load(f)
 
 def image_copy_paste(img, paste_img, alpha, blend=True, sigma=1):
     if alpha is not None:
@@ -294,26 +305,70 @@ def copy_paste_class(dataset_class):
             self._split_transforms()
 
         img_data = self.load_example(idx)
-        print(img_data['bboxes'])
+
         if self.copy_paste is not None:
-            paste_idx = random.randint(0, self.__len__() - 1)
-            paste_img_data = self.load_example(paste_idx)
+            img_id = self.ids[idx]
+            ann_ids = coco_annotation.getAnnIds(imgIds=img_id)
+            anns = coco_annotation.loadAnns(ann_ids)
 
-            # for bbox in img_data['bboxes']:
-            #     for bbox2 in paste_img_data['bboxes']:
-                    
+            # Pick a random category instace in the image
+            cats_in_img = []
+            for ann in anns:
+                cats_in_img.append(ann['category_id'])
+            cats_in_img = list(set(cats_in_img))
+            # print(idx)
+            # print(anns)
+            target_cat = random.choice(cats_in_img)
 
-            for k in list(paste_img_data.keys()):
-                paste_img_data['paste_' + k] = paste_img_data[k]
-                del paste_img_data[k]
+            # Weighted-randomly select a paste img according to cooccurence table
+            sample_list = list(cooccurence_table[id_to_name(target_cat)].keys())
+            sample_weight = list(cooccurence_table[id_to_name(target_cat)].values())
 
-            img_data = self.copy_paste(**img_data, **paste_img_data)
-            img_data = self.post_transforms(**img_data)
-            img_data['paste_index'] = paste_idx
+            paste_cat = random.choices(sample_list, weights=sample_weight)[0]
 
+            # Paste a image with a target category
+            img_data = get_next_paste_img(self, img_data, paste_cat, 0)
+        
         return img_data
+
+    def get_next_paste_img(self, img_data, paste_cat, num_loop):
+        print("num_loop:", num_loop)
+        print("  paste category:", paste_cat)
+        if paste_cat == 'end node':
+            print('end node')
+            return img_data
+
+        paste_idx = random.choice(coco_annotation.getImgIds(catIds=name_to_id(paste_cat)))
+
+        paste_img_data = self.load_example_from_img(paste_idx, paste_cat)
+
+        for k in list(paste_img_data.keys()):
+            paste_img_data['paste_' + k] = paste_img_data[k]
+            del paste_img_data[k]
+            
+        img_data = self.copy_paste(**img_data, **paste_img_data)
+        img_data = self.post_transforms(**img_data)
+        # img_data['paste_index'] = paste_idx
+        
+        # Weighted-randomly select a paste img according to cooccurence table
+        sample_list = list(cooccurence_table[paste_cat].keys())
+        sample_weight = list(cooccurence_table[paste_cat].values())
+
+        paste_cat = random.choices(sample_list, weights=sample_weight)[0]
+
+        return get_next_paste_img(self, img_data, paste_cat, num_loop+1)
 
     setattr(dataset_class, '_split_transforms', _split_transforms)
     setattr(dataset_class, '__getitem__', __getitem__)
 
     return dataset_class
+
+
+def id_to_name(query_id):
+    query_annotation = coco_annotation.loadCats([query_id])[0]
+    query_name = query_annotation["name"]
+    return query_name
+
+def name_to_id(query_name):
+    query_id = coco_annotation.getCatIds(catNms=[query_name])[0]
+    return query_id

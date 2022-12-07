@@ -12,6 +12,8 @@ from pycocotools.coco import COCO
 coco_annotation_file_path = "coco/annotations/instances_train2017.json"
 coco_annotation = COCO(annotation_file=coco_annotation_file_path)
 
+generate_ratio = False
+
 def main():
     cooccurence_table = dict()
 
@@ -28,6 +30,7 @@ def main():
         cooccurence_table[cat_name] = dict()
         for cat_name2 in cat_names:
             cooccurence_table[cat_name][cat_name2] = 0
+        cooccurence_table[cat_name]['end node'] = 0
 
     for cat_id in cat_ids:
         img_ids = coco_annotation.getImgIds(catIds=[cat_id])
@@ -42,18 +45,24 @@ def main():
                 cats_in_img.append(ann['category_id'])
             cats_in_img = set(cats_in_img)
 
+            instance = 0
             for cat_in_img in cats_in_img:
                 if cat_in_img == cat_id:
                     continue
                 # if id_to_name(cat_in_img) not in cooccurence_table[id_to_name(cat_id)]:
                 #     cooccurence_table[id_to_name(cat_id)][id_to_name(cat_in_img)] = 0
                 cooccurence_table[id_to_name(cat_id)][id_to_name(cat_in_img)] += 1
+                instance += 1
 
-    for cat_id in cat_ids:
-        total = sum(cooccurence_table[id_to_name(cat_id)].values(), 0.0)
-        cooccurence_table[id_to_name(cat_id)] = {k: v / total for k, v in cooccurence_table[id_to_name(cat_id)].items()}
+            if instance == 0:
+                cooccurence_table[id_to_name(cat_id)]['end node'] += 1
 
-    print_cooccurence_table(cooccurence_table)
+    if generate_ratio:
+        for cat_id in cat_ids:
+            total = sum(cooccurence_table[id_to_name(cat_id)].values(), 0.0)
+            cooccurence_table[id_to_name(cat_id)] = {k: v / total for k, v in cooccurence_table[id_to_name(cat_id)].items()}
+
+    # print_cooccurence_table(cooccurence_table)
 
     # Save the table into pkl
     with open('cooccurence_table.pkl', 'wb') as f:
@@ -70,10 +79,21 @@ def id_to_name(query_id):
     query_name = query_annotation["name"]
     return query_name
 
+def name_to_id(query_name):
+    query_id = coco_annotation.getCatIds(catNms=[query_name])[0]
+    return query_id
+
 def save_to_csv(table):
     csv_columns = [key for key in table]
     csv_columns.insert(0, ' ')
-    with open('cooccurence_table.csv', 'w') as csvfile:
+    csv_columns.append('end node')
+
+    if generate_ratio:
+        filename = 'cooccurence_ratio_table.csv'
+    else:
+        filename = 'cooccurence_table.csv'
+
+    with open(filename, 'w') as csvfile:
         wr = csv.writer(csvfile)
         wr.writerow(csv_columns)
         for key, value in table.items():
@@ -81,7 +101,6 @@ def save_to_csv(table):
             data.append(key)
             for k, v in value.items():
                 data.append(round(v,4))
-            print(data)
             wr.writerow(data)
     return
 
