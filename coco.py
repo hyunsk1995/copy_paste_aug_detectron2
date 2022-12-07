@@ -99,11 +99,17 @@ class CocoDetectionCP(CocoDetection):
         #bboxes are expected to be (y1, x1, y2, x2, category_id)
         masks = []
         bboxes = []
-        for ix, obj in enumerate(cat_in_target):
+        
+        for ix, obj in enumerate(target):
             masks.append(self.coco.annToMask(obj))
+            b_box = obj['bbox']
+            bboxes.append(b_box + [obj['category_id']] + [ix])
+
+        # for ix, obj in enumerate(cat_in_target):
+        #     masks.append(self.coco.annToMask(obj))
             
-        b_box = select_obj['bbox']
-        bboxes.append(b_box + [select_obj['category_id']]+[ix])
+        # b_box = select_obj['bbox']
+        # bboxes.append(b_box + [select_obj['category_id']]+[ix])
 
         #pack outputs into a dict
         output = {

@@ -193,10 +193,10 @@ cfg.DATASETS.TRAIN = ("my_dataset_train",)
 cfg.DATASETS.VAL = ("my_dataset_val",)
 
                 
-cfg.INPUT.MIN_SIZE_TEST= 256
-cfg.INPUT.MAX_SIZE_TEST = 256
-cfg.INPUT.MIN_SIZE_TRAIN = 256
-cfg.INPUT.MAX_SIZE_TRAIN = 256
+cfg.INPUT.MIN_SIZE_TEST= 800
+cfg.INPUT.MAX_SIZE_TEST = 800
+cfg.INPUT.MIN_SIZE_TRAIN = 800
+cfg.INPUT.MAX_SIZE_TRAIN = 800
 
 cfg.INPUT.MASK_FORMAT = "bitmask"
 
@@ -207,7 +207,7 @@ cfg.DATASETS.TEST = ("my_dataset_test",)
 cfg.DATALOADER.NUM_WORKERS = 6
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
-cfg.SOLVER.IMS_PER_BATCH = 256 #increase it
+cfg.SOLVER.IMS_PER_BATCH = 10 #increase it
 cfg.SOLVER.BASE_LR = 0.32
 cfg.SOLVER.GAMMA = 0.95
 cfg.SOLVER.STEPS = (1000,)
@@ -218,8 +218,8 @@ cfg.SOLVER.STEPS = (1000,)
 # cfg.SOLVER.WARMUP_METHOD = "linear"
 
 cfg.SOLVER.MAX_ITER =121000    
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
-cfg.MODEL.RETINANET.NUM_CLASSES = 80
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = 273
+cfg.MODEL.RETINANET.NUM_CLASSES = 273
 cfg.SOLVER.CHECKPOINT_PERIOD = 1000
 
 
