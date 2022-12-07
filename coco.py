@@ -2,6 +2,7 @@ import os
 import cv2
 from torchvision.datasets import CocoDetection
 from copy_paste import copy_paste_class
+import numpy as np
 
 min_keypoints_per_image = 10
 
@@ -82,24 +83,27 @@ class CocoDetectionCP(CocoDetection):
         return self.transforms(**output)
 
     def load_example_from_img(self, img_id, cat):
+        import random
+
         ann_ids = self.coco.getAnnIds(imgIds=img_id)
         target = self.coco.loadAnns(ann_ids)
-
+        cat_in_target = list(filter(lambda obj:obj['category_id']==cat, target))
+        select_obj = random.choice(cat_in_target)
+        
         path = self.coco.loadImgs(img_id)[0]['file_name']
+        
         image = cv2.imread(os.path.join(self.root, path))
-        #print(os.path.join(self.root, path))
-        #image = cv2.imread(os.path.join('', path))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         #convert all of the target segmentations to masks
         #bboxes are expected to be (y1, x1, y2, x2, category_id)
         masks = []
         bboxes = []
-        for ix, obj in enumerate(target):
-            if obj['category_id'] == cat:
-                masks.append(self.coco.annToMask(obj))
-                b_box = obj['bbox']
-                bboxes.append(b_box + [obj['category_id']] + [ix])
+        for ix, obj in enumerate(cat_in_target):
+            masks.append(self.coco.annToMask(obj))
+            
+        b_box = select_obj['bbox']
+        bboxes.append(b_box + [select_obj['category_id']]+[ix])
 
         #pack outputs into a dict
         output = {

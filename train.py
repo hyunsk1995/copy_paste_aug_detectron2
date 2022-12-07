@@ -57,17 +57,21 @@ test_metadata = MetadataCatalog.get("my_dataset_val")
 #         CopyPaste(blend=True, sigma=1, pct_objects_paste=0.8, p=1.0) #pct_objects_paste is a guess
 #     ]
 
-aug_list = [A.Resize(800,800),\
-            # A.RandomScale(scale_limit=(-0.9, 1), p=1),\
-            A.OneOf([A.HorizontalFlip(),A.RandomRotate90()],p=0.75),\
-            A.OneOf([A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=35, val_shift_limit=25),A.RandomGamma(),A.CLAHE()],p=0.5),\
-            A.OneOf([A.RandomBrightnessContrast(brightness_limit=0.25, contrast_limit=0.25),A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15)],p=0.5),\
-            A.OneOf([A.Blur(),A.MotionBlur(),A.GaussNoise(),A.ImageCompression(quality_lower=75)],p=0.5),
-        CopyPaste(blend=True, sigma=1, pct_objects_paste=0.9, p=1.0) #pct_objects_paste is a guess
+aug_list = [
+            A.Resize(256,256),
+            # A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
+            A.RandomScale(scale_limit=(-0.2, 0.25), p=1), #SmallScaleJitter from scale of 0.8 to 1.25
+            A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
+            A.RandomCrop(256, 256),
+            # A.OneOf([A.HorizontalFlip(),A.RandomRotate90()],p=0.75),\
+            # A.OneOf([A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=35, val_shift_limit=25),A.RandomGamma(),A.CLAHE()],p=0.5),\
+            # A.OneOf([A.RandomBrightnessContrast(brightness_limit=0.25, contrast_limit=0.25),A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15)],p=0.5),\
+            # A.OneOf([A.Blur(),A.MotionBlur(),A.GaussNoise(),A.ImageCompression(quality_lower=75)],p=0.5),
+        CopyPaste(blend=True, sigma=1, pct_objects_paste=1.0, p=1.0) #pct_objects_paste is a guess
     ]
         
 transform = A.Compose(
-            aug_list, bbox_params=A.BboxParams(format="coco")
+            aug_list, bbox_params=A.BboxParams(format="coco", min_visibility=0.05)
         )
 
 data = CocoDetectionCP(
@@ -189,10 +193,12 @@ cfg.DATASETS.TRAIN = ("my_dataset_train",)
 cfg.DATASETS.VAL = ("my_dataset_val",)
 
                 
-cfg.INPUT.MIN_SIZE_TEST= 800
-cfg.INPUT.MAX_SIZE_TEST = 800
-cfg.INPUT.MIN_SIZE_TRAIN = 800
-cfg.INPUT.MAX_SIZE_TRAIN = 800
+cfg.INPUT.MIN_SIZE_TEST= 256
+cfg.INPUT.MAX_SIZE_TEST = 256
+cfg.INPUT.MIN_SIZE_TRAIN = 256
+cfg.INPUT.MAX_SIZE_TRAIN = 256
+
+cfg.INPUT.MASK_FORMAT = "bitmask"
 
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
 
@@ -201,19 +207,19 @@ cfg.DATASETS.TEST = ("my_dataset_test",)
 cfg.DATALOADER.NUM_WORKERS = 6
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
-cfg.SOLVER.IMS_PER_BATCH = 10 #increase it
-cfg.SOLVER.BASE_LR = 0.02
-cfg.SOLVER.GAMMA = 0.1
-cfg.SOLVER.STEPS = (4000,)
+cfg.SOLVER.IMS_PER_BATCH = 256 #increase it
+cfg.SOLVER.BASE_LR = 0.32
+cfg.SOLVER.GAMMA = 0.95
+cfg.SOLVER.STEPS = (1000,)
 # The iteration number to decrease learning rate by GAMMA.
 
-cfg.SOLVER.WARMUP_FACTOR = 1.0 / 3
-cfg.SOLVER.WARMUP_ITERS = 500
-cfg.SOLVER.WARMUP_METHOD = "linear"
+# cfg.SOLVER.WARMUP_FACTOR = 1.0 / 3
+# cfg.SOLVER.WARMUP_ITERS = 500
+# cfg.SOLVER.WARMUP_METHOD = "linear"
 
 cfg.SOLVER.MAX_ITER =121000    
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 273
-cfg.MODEL.RETINANET.NUM_CLASSES = 273
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
+cfg.MODEL.RETINANET.NUM_CLASSES = 80
 cfg.SOLVER.CHECKPOINT_PERIOD = 1000
 
 

@@ -9,10 +9,10 @@ import pickle
 from copy import deepcopy
 from skimage.filters import gaussian
 
-from pycocotools.coco import COCO
+# from pycocotools.coco import COCO
 
-coco_annotation_file_path = "coco/annotations/instances_train2017.json"
-coco_annotation = COCO(annotation_file=coco_annotation_file_path)
+# coco_annotation_file_path = "coco/annotations/instances_train2017.json"
+# coco_annotation = COCO(annotation_file=coco_annotation_file_path)
 
 with open('cooccurence_table.pkl', 'rb') as f:
     cooccurence_table = pickle.load(f)
@@ -191,6 +191,7 @@ class CopyPaste(A.DualTransform):
 
         #create alpha by combining all the objects into
         #a single binary mask
+        # print(mask_indices, len(masks))
         masks = [masks[idx] for idx in mask_indices]
 
         alpha = masks[0] > 0
@@ -308,8 +309,8 @@ def copy_paste_class(dataset_class):
 
         if self.copy_paste is not None:
             img_id = self.ids[idx]
-            ann_ids = coco_annotation.getAnnIds(imgIds=img_id)
-            anns = coco_annotation.loadAnns(ann_ids)
+            ann_ids = self.coco.getAnnIds(imgIds=img_id)
+            anns = self.coco.loadAnns(ann_ids)
 
             # Pick a random category instace in the image
             cats_in_img = []
@@ -319,10 +320,11 @@ def copy_paste_class(dataset_class):
             # print(idx)
             # print(anns)
             target_cat = random.choice(cats_in_img)
+            # print("initial category:", id_to_name(target_cat))
 
             # Weighted-randomly select a paste img according to cooccurence table
-            sample_list = list(cooccurence_table[id_to_name(target_cat)].keys())
-            sample_weight = list(cooccurence_table[id_to_name(target_cat)].values())
+            sample_list = list(cooccurence_table[id_to_name(self, target_cat)].keys())
+            sample_weight = list(cooccurence_table[id_to_name(self, target_cat)].values())
 
             paste_cat = random.choices(sample_list, weights=sample_weight)[0]
 
@@ -332,22 +334,25 @@ def copy_paste_class(dataset_class):
         return img_data
 
     def get_next_paste_img(self, img_data, paste_cat, num_loop):
-        print("num_loop:", num_loop)
-        print("  paste category:", paste_cat)
-        if paste_cat == 'end node':
-            print('end node')
+        # print("num_loop:", num_loop)
+        # print("  paste category:", paste_cat)
+        if paste_cat == 'end node' or num_loop == 5:
+            # print('end node')
             return img_data
 
-        paste_idx = random.choice(coco_annotation.getImgIds(catIds=name_to_id(paste_cat)))
+        paste_idx = random.choice(self.coco.getImgIds(catIds=name_to_id(self, paste_cat)))
 
-        paste_img_data = self.load_example_from_img(paste_idx, paste_cat)
+        paste_img_data = self.load_example_from_img(paste_idx, name_to_id(self, paste_cat))
 
         for k in list(paste_img_data.keys()):
             paste_img_data['paste_' + k] = paste_img_data[k]
             del paste_img_data[k]
-            
+           
         img_data = self.copy_paste(**img_data, **paste_img_data)
         img_data = self.post_transforms(**img_data)
+        del img_data['paste_image']
+        del img_data['paste_masks']
+        del img_data['paste_bboxes']
         # img_data['paste_index'] = paste_idx
         
         # Weighted-randomly select a paste img according to cooccurence table
@@ -358,17 +363,18 @@ def copy_paste_class(dataset_class):
 
         return get_next_paste_img(self, img_data, paste_cat, num_loop+1)
 
+    def id_to_name(self, query_id):
+        query_annotation = self.coco.loadCats([query_id])[0]
+        query_name = query_annotation["name"]
+        return query_name
+
+    def name_to_id(self, query_name):
+        query_id = self.coco.getCatIds(catNms=[query_name])[0]
+        return query_id
+
     setattr(dataset_class, '_split_transforms', _split_transforms)
     setattr(dataset_class, '__getitem__', __getitem__)
 
     return dataset_class
 
 
-def id_to_name(query_id):
-    query_annotation = coco_annotation.loadCats([query_id])[0]
-    query_name = query_annotation["name"]
-    return query_name
-
-def name_to_id(query_name):
-    query_id = coco_annotation.getCatIds(catNms=[query_name])[0]
-    return query_id
