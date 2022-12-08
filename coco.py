@@ -100,7 +100,7 @@ class CocoDetectionCP(CocoDetection):
         masks = []
         bboxes = []
         
-        for ix, obj in enumerate(target):
+        for ix, obj in enumerate(cat_in_target):
             masks.append(self.coco.annToMask(obj))
             b_box = obj['bbox']
             bboxes.append(b_box + [obj['category_id']] + [ix])

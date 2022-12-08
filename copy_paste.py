@@ -9,7 +9,7 @@ import pickle
 from copy import deepcopy
 from skimage.filters import gaussian
 
-MAX_ITER = 5
+MAX_ITER = 2
 
 # from pycocotools.coco import COCO
 
