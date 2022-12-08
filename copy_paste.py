@@ -9,6 +9,8 @@ import pickle
 from copy import deepcopy
 from skimage.filters import gaussian
 
+MAX_ITER = 5
+
 # from pycocotools.coco import COCO
 
 # coco_annotation_file_path = "coco/annotations/instances_train2017.json"
@@ -336,7 +338,7 @@ def copy_paste_class(dataset_class):
     def get_next_paste_img(self, img_data, paste_cat, num_loop):
         # print("num_loop:", num_loop)
         # print("  paste category:", paste_cat)
-        if paste_cat == 'end node' or num_loop == 5:
+        if paste_cat == 'end node' or num_loop == MAX_ITER:
             # print('end node')
             return img_data
 

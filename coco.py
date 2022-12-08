@@ -109,7 +109,7 @@ class CocoDetectionCP(CocoDetection):
         #     masks.append(self.coco.annToMask(obj))
             
         # b_box = select_obj['bbox']
-        # bboxes.append(b_box + [select_obj['category_id']]+[ix])
+        # bboxes.append(b_box + [select_obj['category_id']])
 
         #pack outputs into a dict
         output = {

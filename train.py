@@ -165,12 +165,16 @@ class MyMapper:
                 
                 
     }
+            valid = True
             for contour in contours:
                 contour = np.flip(contour, axis=1)
                 segmentation = contour.ravel().tolist()
                 annotation["segmentation"].append(segmentation)
-                
-            annos.append(annotation)
+                if len(segmentation) <= 4:
+                    valid = False
+            
+            if valid:
+                annos.append(annotation)
         
         image_shape = image.shape[:2]  # h, w
        
