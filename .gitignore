@@ -1,5 +1,6 @@
 /coco
 /output_aug
+/output_val
 pickleload.py
 /__pycache__
 

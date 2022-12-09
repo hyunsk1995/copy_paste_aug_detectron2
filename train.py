@@ -7,6 +7,7 @@ import random
 # import some common detectron2 utilities
 from detectron2 import model_zoo
 
+from collections import OrderedDict
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog,DatasetCatalog
@@ -15,7 +16,7 @@ from detectron2.data import build_detection_test_loader, build_detection_train_l
 from detectron2.data import transforms as T
 from detectron2.data import detection_utils as utils
 
-from detectron2.engine import DefaultTrainer
+from detectron2.engine import DefaultTrainer, hooks
 from detectron2.engine import HookBase
 from detectron2.engine import launch
 from detectron2.engine import DefaultPredictor
@@ -39,8 +40,8 @@ from visualize import display_instances
 # Data Preprocess
 DatasetCatalog.clear()
 for d in ['train','val']:
-    DatasetCatalog.register("my_dataset_"+d, lambda d=d: load_coco_json("/home/hyunsk/copy_paste_aug_detectron2/coco/annotations/instances_{}2017.json".format(d,d),
-    image_root= "/home/hyunsk/copy_paste_aug_detectron2/coco/{}2017".format(d),\
+    DatasetCatalog.register("my_dataset_"+d, lambda d=d: load_coco_json("./coco/annotations/instances_{}2017.json".format(d,d),
+    image_root= "./coco/{}2017".format(d),\
     dataset_name="my_dataset_"+d))
 
 dataset_dicts_train = DatasetCatalog.get("my_dataset_train")
@@ -48,6 +49,10 @@ dataset_dicts_test = DatasetCatalog.get("my_dataset_val")
 
 train_metadata = MetadataCatalog.get("my_dataset_train")
 test_metadata = MetadataCatalog.get("my_dataset_val")
+
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset, DatasetEvaluators
+from detectron2.data import build_detection_test_loader
+    
 
 
 # Augmentation list
@@ -76,8 +81,8 @@ transform = A.Compose(
         )
 
 data = CocoDetectionCP(
-    '/home/hyunsk/copy_paste_aug_detectron2/coco/train2017',
-    '/home/hyunsk/copy_paste_aug_detectron2/coco/annotations/instances_train2017.json',
+    './coco/train2017',
+    './coco/annotations/instances_train2017.json',
     transform
 )
 
@@ -189,6 +194,12 @@ class MyTrainer(DefaultTrainer):
         return build_detection_train_loader(
             cfg, mapper=MyMapper(cfg, True), sampler=sampler
         )
+    def _test(cls, cfg, model):
+        evaluator = [COCOEvaluator("my_dataset_val", ("bbox", "segm"), False, output_dir="./output_val/")]
+        res = cls.test(cfg, model, evaluator)
+        res = OrderedDict({k:v for k,v in res.items()})
+        return res
+   
 
 def main(args):
     cfg = get_cfg()
@@ -206,11 +217,11 @@ def main(args):
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
 
     cfg.INPUT.FORMAT = 'BGR'
-    cfg.DATASETS.TEST = ("my_dataset_test",)
+    cfg.DATASETS.TEST = ("my_dataset_val",)
     cfg.DATALOADER.NUM_WORKERS = 6
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
-    cfg.SOLVER.IMS_PER_BATCH = 10 #increase it
+    cfg.SOLVER.IMS_PER_BATCH = 16 #increase it
     cfg.SOLVER.BASE_LR = 0.02
     cfg.SOLVER.GAMMA = 0.1
     cfg.SOLVER.STEPS = (4000,)
@@ -225,14 +236,22 @@ def main(args):
     cfg.MODEL.RETINANET.NUM_CLASSES = 80
     cfg.SOLVER.CHECKPOINT_PERIOD = 1000
 
-    cfg.TEST.EVAL_PERIOD = 10000
+    cfg.TEST.EVAL_PERIOD = 20
 
     cfg.OUTPUT_DIR = './output_aug/'
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
-    trainer = MyTrainer(cfg) 
+    trainer = MyTrainer(cfg)
+
+    trainer.register_hooks(
+        [hooks.EvalHook(cfg.TEST.EVAL_PERIOD, lambda: trainer._test(cfg, trainer.model))]
+    )
 
     trainer.resume_or_load(resume=False)
+
+    
+    # val_loader = build_detection_test_loader(cfg, "my_dataset_val")
+    # print(inference_on_dataset(trainer.model, val_loader, evaluator))
 
     return trainer.train()
 
