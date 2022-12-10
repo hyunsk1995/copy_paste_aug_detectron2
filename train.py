@@ -53,15 +53,7 @@ test_metadata = MetadataCatalog.get("my_dataset_val")
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset, DatasetEvaluators
 from detectron2.data import build_detection_test_loader
     
-
-
 # Augmentation list
-# aug_list = [
-#         A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
-#         A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
-#         A.RandomCrop(256, 256),
-#         CopyPaste(blend=True, sigma=1, pct_objects_paste=0.8, p=1.0) #pct_objects_paste is a guess
-#     ]
 
 aug_list = [
             # A.Resize(256,256),
