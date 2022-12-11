@@ -71,6 +71,10 @@ class CocoDetectionCP(CocoDetection):
         for ix, obj in enumerate(target):
             masks.append(self.coco.annToMask(obj))
             b_box = obj['bbox']
+            if b_box[2] == 0:
+                b_box[2] = 0.01
+            if b_box[3] == 0:
+                b_box[3] = 0.01
             bboxes.append(b_box + [obj['category_id']] + [ix])
 
         #pack outputs into a dict
@@ -103,6 +107,10 @@ class CocoDetectionCP(CocoDetection):
         for ix, obj in enumerate(cat_in_target):
             masks.append(self.coco.annToMask(obj))
             b_box = obj['bbox']
+            if b_box[2] == 0:
+                b_box[2] = 0.01
+            if b_box[3] == 0:
+                b_box[3] = 0.01
             bboxes.append(b_box + [obj['category_id']] + [ix])
 
         # for ix, obj in enumerate(cat_in_target):

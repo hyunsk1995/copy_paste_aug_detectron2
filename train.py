@@ -40,15 +40,15 @@ from visualize import display_instances
 # Data Preprocess
 DatasetCatalog.clear()
 for d in ['train','val']:
-    DatasetCatalog.register("my_dataset_"+d, lambda d=d: load_coco_json("./coco/annotations/instances_{}2017.json".format(d,d),
+    DatasetCatalog.register("coco_"+d, lambda d=d: load_coco_json("./coco/annotations/instances_{}2017.json".format(d,d),
     image_root= "./coco/{}2017".format(d),\
-    dataset_name="my_dataset_"+d))
+    dataset_name="coco_"+d))
 
-dataset_dicts_train = DatasetCatalog.get("my_dataset_train")
-dataset_dicts_test = DatasetCatalog.get("my_dataset_val")
+dataset_dicts_train = DatasetCatalog.get("coco_train")
+dataset_dicts_test = DatasetCatalog.get("coco_val")
 
-train_metadata = MetadataCatalog.get("my_dataset_train")
-test_metadata = MetadataCatalog.get("my_dataset_val")
+train_metadata = MetadataCatalog.get("coco_train")
+test_metadata = MetadataCatalog.get("coco_val")
 
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset, DatasetEvaluators
 from detectron2.data import build_detection_test_loader
@@ -125,7 +125,7 @@ class MyMapper:
         aug_sample = data[data_id_to_num[img_id]]
         
         image = aug_sample['image']
-        
+
         image =  cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         
         dataset_dict["image"] = torch.as_tensor(image.transpose(2, 0, 1).astype("float32"))
@@ -135,7 +135,6 @@ class MyMapper:
         box_classes = np.array([b[-2] for b in bboxes])
         # boxes = np.stack([b[:4] for b in bboxes], axis=0)
         mask_indices = np.array([b[-1] for b in bboxes])
-        
         
         masks = aug_sample['masks']
         
@@ -166,7 +165,7 @@ class MyMapper:
                 annotation["segmentation"].append(segmentation)
                 if len(segmentation) <= 4:
                     valid = False
-            
+
             if valid:
                 annos.append(annotation)
         
@@ -183,7 +182,7 @@ class MyTrainer(DefaultTrainer):
             cfg, mapper=MyMapper(cfg, True), sampler=sampler
         )
     def _test(cls, cfg, model):
-        evaluator = [COCOEvaluator("my_dataset_val", ("bbox", "segm"), False, output_dir="./output_val/")]
+        evaluator = [COCOEvaluator("coco_val", ("bbox", "segm"), False, output_dir="./output_val/")]
         res = cls.test(cfg, model, evaluator)
         res = OrderedDict({k:v for k,v in res.items()})
         return res
@@ -193,8 +192,8 @@ def main(args):
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
 
-    cfg.DATASETS.TRAIN = ("my_dataset_train",)
-    cfg.DATASETS.VAL = ("my_dataset_val",)
+    cfg.DATASETS.TRAIN = ("coco_train",)
+    cfg.DATASETS.VAL = ("coco_val",)
 
                     
     cfg.INPUT.MIN_SIZE_TEST= 800
@@ -205,7 +204,7 @@ def main(args):
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
 
     cfg.INPUT.FORMAT = 'BGR'
-    cfg.DATASETS.TEST = ("my_dataset_val",)
+    cfg.DATASETS.TEST = ("coco_val",)
     cfg.DATALOADER.NUM_WORKERS = 6
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
@@ -238,7 +237,7 @@ def main(args):
     trainer.resume_or_load(resume=False)
 
     
-    # val_loader = build_detection_test_loader(cfg, "my_dataset_val")
+    # val_loader = build_detection_test_loader(cfg, "coco_val")
     # print(inference_on_dataset(trainer.model, val_loader, evaluator))
 
     return trainer.train()
