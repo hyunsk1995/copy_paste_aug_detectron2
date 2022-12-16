@@ -3,6 +3,7 @@
 /output_val
 pickleload.py
 /__pycache__
+detectron2_copypaste.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
