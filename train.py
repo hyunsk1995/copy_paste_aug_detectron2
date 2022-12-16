@@ -57,11 +57,11 @@ from detectron2.data import build_detection_test_loader
 
 aug_list = [
             # A.Resize(256,256),
-            A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
+            # A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
             # A.RandomScale(scale_limit=(-0.2, 0.25), p=1), #SmallScaleJitter from scale of 0.8 to 1.25
             A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
             A.RandomCrop(256, 256),
-        CopyPaste(blend=True, sigma=1, pct_objects_paste=1.0, p=1.0) #pct_objects_paste is a guess
+        # CopyPaste(blend=True, sigma=1, pct_objects_paste=1.0, p=1.0) #pct_objects_paste is a guess
     ]
         
 transform = A.Compose(
@@ -206,26 +206,26 @@ def main(args):
     cfg.INPUT.FORMAT = 'BGR'
     cfg.DATASETS.TEST = ("coco_val",)
     cfg.DATALOADER.NUM_WORKERS = 6
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
+    # cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
 
     cfg.SOLVER.IMS_PER_BATCH = 16 #increase it
-    cfg.SOLVER.BASE_LR = 0.02
-    cfg.SOLVER.GAMMA = 0.1
+    cfg.SOLVER.BASE_LR = 0.032
+    cfg.SOLVER.GAMMA = 0.9
     cfg.SOLVER.STEPS = (4000,)
     # The iteration number to decrease learning rate by GAMMA.
 
     # cfg.SOLVER.WARMUP_FACTOR = 1.0 / 3
-    # cfg.SOLVER.WARMUP_ITERS = 500
-    # cfg.SOLVER.WARMUP_METHOD = "linear"
+    cfg.SOLVER.WARMUP_ITERS = 1000
+    cfg.SOLVER.WARMUP_METHOD = "linear"
 
-    cfg.SOLVER.MAX_ITER = 20000    
+    cfg.SOLVER.MAX_ITER = 30000    
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
     cfg.MODEL.RETINANET.NUM_CLASSES = 80
     cfg.SOLVER.CHECKPOINT_PERIOD = 1000
 
-    cfg.TEST.EVAL_PERIOD = 4000
+    cfg.TEST.EVAL_PERIOD = 6000
 
-    cfg.OUTPUT_DIR = './output_aug/'
+    cfg.OUTPUT_DIR = './output_aug/no_jittering'
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
     trainer = MyTrainer(cfg)

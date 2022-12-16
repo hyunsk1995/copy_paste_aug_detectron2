@@ -40,11 +40,15 @@ from coco import CocoDetectionCP
 import albumentations as A
 from visualize import display_instances
 
+from copy_paste import MAX_ITER
+
+coco_path = "../cpaug"
+
 # Data Preprocess
 DatasetCatalog.clear()
 for d in ['train','val']:
-    DatasetCatalog.register("coco_"+d, lambda d=d: load_coco_json("./coco/annotations/instances_{}2017.json".format(d,d),
-    image_root= "./coco/{}2017".format(d),\
+    DatasetCatalog.register("coco_"+d, lambda d=d: load_coco_json(coco_path + "/coco/annotations/instances_{}2017.json".format(d,d),
+    image_root= coco_path+"/coco/{}2017".format(d),\
     dataset_name="coco_"+d))
 
 dataset_dicts_train = DatasetCatalog.get("coco_train")
@@ -58,57 +62,30 @@ from detectron2.data import build_detection_test_loader
     
 # Augmentation list
 
-aug_list = [
-            # A.Resize(256,256),
-            A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
-            # A.RandomScale(scale_limit=(-0.2, 0.25), p=1), #SmallScaleJitter from scale of 0.8 to 1.25
-            A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
-            A.RandomCrop(256, 256),
-        CopyPaste(blend=True, sigma=1, pct_objects_paste=1.0, p=1.0) #pct_objects_paste is a guess
-    ]
+# aug_list = [
+#             # A.Resize(256,256),
+#             A.RandomScale(scale_limit=(-0.9, 1), p=1), #LargeScaleJitter from scale of 0.1 to 2
+#             # A.RandomScale(scale_limit=(-0.2, 0.25), p=1), #SmallScaleJitter from scale of 0.8 to 1.25
+#             A.PadIfNeeded(256, 256, border_mode=0), #pads with image in the center, not the top left like the paper
+#             A.RandomCrop(256, 256),
+#         CopyPaste(blend=True, sigma=1, pct_objects_paste=1.0, p=1.0) #pct_objects_paste is a guess
+#     ]
         
-transform = A.Compose(
-            aug_list, bbox_params=A.BboxParams(format="coco", min_visibility=0.05)
-        )
+# transform = A.Compose(
+#             aug_list, bbox_params=A.BboxParams(format="coco", min_visibility=0.05)
+#         )
 
-data = CocoDetectionCP(
-    './coco/train2017',
-    './coco/annotations/instances_train2017.json',
-    transform
-)
+# data = CocoDetectionCP(
+#     coco_path+'/coco/train2017',
+#     coco_path+'/coco/annotations/instances_train2017.json',
+#     transform
+# )
 
-data_id_to_num = {i:q for q,i in enumerate(data.ids)}
-ALL_IDS = list(data_id_to_num.keys())
+# data_id_to_num = {i:q for q,i in enumerate(data.ids)}
+# ALL_IDS = list(data_id_to_num.keys())
 
-dataset_dicts_train = [i for i in dataset_dicts_train if i['image_id'] in ALL_IDS]
-BOX_MODE = dataset_dicts_train[0]['annotations'][0]['bbox_mode']
-
-# Visualize
-def Visualize():
-    plt.figure(figsize=(5,5),dpi=200)
-    for i in range(5):
-        img_data = data[0]
-
-        f, ax = plt.subplots(1, 2, figsize=(16, 16))
-        image = img_data['image']
-        masks = img_data['masks']
-        bboxes = img_data['bboxes']
-
-        empty = np.array([])
-        display_instances(image, empty, empty, empty, empty, show_mask=False, show_bbox=False, ax=ax[0])
-
-        if len(bboxes) > 0:
-            boxes = np.stack([b[:4] for b in bboxes], axis=0)
-            box_classes = np.array([b[-2] for b in bboxes])
-            mask_indices = np.array([b[-1] for b in bboxes])
-            show_masks = np.stack(masks, axis=-1)[..., mask_indices]
-            class_names = {k: data.coco.cats[k]['name'] for k in data.coco.cats.keys()}
-            display_instances(image, boxes, show_masks, box_classes, class_names, show_bbox=True, ax=ax[1])
-        else:
-            display_instances(image, empty, empty, empty, empty, show_mask=False, show_bbox=False, ax=ax[1])
-    plt.show()
-
-# Visualize()
+# dataset_dicts_train = [i for i in dataset_dicts_train if i['image_id'] in ALL_IDS]
+# BOX_MODE = dataset_dicts_train[0]['annotations'][0]['bbox_mode']
 
 class MyMapper:
     """Mapper which uses `detectron2.data.transforms` augmentations"""
@@ -197,41 +174,12 @@ def main(args):
 
     cfg.DATASETS.TRAIN = ("coco_train",)
     cfg.DATASETS.VAL = ("coco_val",)
-                    
-    cfg.INPUT.MIN_SIZE_TEST= 800
-    cfg.INPUT.MAX_SIZE_TEST = 800
-    cfg.INPUT.MIN_SIZE_TRAIN = 800
-    cfg.INPUT.MAX_SIZE_TRAIN = 800
-
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
+    cfg.DATASETS.TEST = ("coco_val",)
 
     cfg.INPUT.FORMAT = 'BGR'
-    cfg.DATASETS.TEST = ("coco_val",)
-    cfg.DATALOADER.NUM_WORKERS = 6
-    # cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Let training initialize from model zoo
-    
-    cfg.SOLVER.IMS_PER_BATCH = 16 #increase it
-    cfg.SOLVER.BASE_LR = 0.02
-    cfg.SOLVER.GAMMA = 0.1
-    cfg.SOLVER.STEPS = (4000,)
-    # The iteration number to decrease learning rate by GAMMA.
-
-    # cfg.SOLVER.WARMUP_FACTOR = 1.0 / 3
-    # cfg.SOLVER.WARMUP_ITERS = 500
-    # cfg.SOLVER.WARMUP_METHOD = "linear"
-
-    cfg.SOLVER.MAX_ITER = 20000    
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
-    cfg.MODEL.RETINANET.NUM_CLASSES = 80
-    cfg.SOLVER.CHECKPOINT_PERIOD = 1000
-
-    cfg.TEST.EVAL_PERIOD = 4000
-
-    cfg.OUTPUT_DIR = './output_aug/'
-    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
     model = build_model(cfg)
-    Checkpointer(model).load("./output_aug/model_final.pth")
+    Checkpointer(model).load("./output_aug_var/1/model_0001999.pth")
     
     evaluator = [COCOEvaluator("coco_val", ("bbox", "segm"), False, output_dir="./output_val/")]
 
